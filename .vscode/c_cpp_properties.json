@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "3Draw Linux Default",
+            "includePath": [
+                "/opt/devkitpro/libctru/include/**",
+                "/opt/devkitpro/devkitARM/include/**",
+                "/opt/devkitpro/devkitARM/arm-none-eabi/include/**",
+                "/opt/devkitpro/portlibs/3ds/include/**"
+            ],
+            "intelliSenseMode": "linux-gcc-x64",
+            "cStandard": "c23",
+            "cppStandard": "c++14",
+            "defines": [
+                "true=1",
+                "false=0"
+            ]
+        }
+    ],
+    "version": 4
+}
