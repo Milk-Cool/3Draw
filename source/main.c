@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 	h = (int)wh[2] << 8 | wh[3];
 	free(text);
 
-	int x = 0, y = 0, sx = 0, sy = 0;
+	int x = SCREEN_WIDTH / 2, y = SCREEN_HEIGHT / 2, sx = 0, sy = 0;
 
 	Thread draw;
 	s32 prio = 0;
@@ -135,18 +135,20 @@ int main(int argc, char **argv)
 
 		if (kHeld & KEY_START) break; // break in order to return to hbmenu
 
+#define SEND0 \
+	send(sock, buf, PACKET_SIZE, 0);
 #define SEND \
 	buf[1] = (sx >> 8) & 0xff; \
 	buf[2] = (sx >> 0) & 0xff; \
 	buf[3] = (sy >> 8) & 0xff; \
 	buf[4] = (sy >> 0) & 0xff; \
-	send(sock, buf, PACKET_SIZE, 0);
+	SEND0
 #define SENDABS \
 	buf[1] = (x >> 8) & 0xff; \
 	buf[2] = (x >> 0) & 0xff; \
 	buf[3] = (y >> 8) & 0xff; \
 	buf[4] = (y >> 0) & 0xff; \
-	send(sock, buf, PACKET_SIZE, 0);
+	SEND0
 		if(kHeld & KEY_TOUCH) {
 			touchPosition touch;
 
@@ -167,12 +169,18 @@ int main(int argc, char **argv)
 				|| kHeld & KEY_DRIGHT
 				|| kHeld & KEY_DUP
 				|| kHeld & KEY_DDOWN) {
-			if(kHeld & KEY_DLEFT && x > 0) x--;
-			if(kHeld & KEY_DRIGHT && x < w - SCREEN_WIDTH - 1) x++;
-			if(kHeld & KEY_DUP && y > 0) y--;
-			if(kHeld & KEY_DDOWN && y < h - SCREEN_HEIGHT - 1) y++;
+			if(kHeld & KEY_DLEFT && x > SCREEN_WIDTH / 2) x--;
+			if(kHeld & KEY_DRIGHT && x < w - SCREEN_WIDTH / 2 - 1) x++;
+			if(kHeld & KEY_DUP && y > SCREEN_HEIGHT / 2) y--;
+			if(kHeld & KEY_DDOWN && y < h - SCREEN_HEIGHT / 2 - 1) y++;
 			buf[0] = 0x03;
 			SENDABS
+		} else if(kHeld & KEY_B) {
+			buf[0] = 0x04;
+			SEND0
+		} else if(kHeld & KEY_X) {
+			buf[0] = 0x05;
+			SEND0
 		} else {
 			// We don't need this anymore
 			// buf[0] = 0x00;
