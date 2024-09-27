@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <malloc.h>
+#include <zlib.h>
 
 bool last_pressed = false;
 
@@ -39,13 +40,25 @@ void* soc_sharedmem;
 volatile bool run_screen = true;
 int sock;
 
+u8 packet_done[PACKET_SIZE] = { 0x06, 0x00, 0x00, 0x00, 0x00 };
+
+void copy(uint8_t* img_uncompr, size_t size, uint8_t* img_full, size_t compr_size, int p) {
+	size_t size_copy = size; // we don't want original size to be modified!
+	uncompress((Bytef*)img_uncompr, (uLongf*)&size_copy, (Bytef*)img_full, p);
+	printf("copying screenshot\n");
+	u8* fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+	memcpy(fb, img_uncompr, size);
+	send(sock, packet_done, PACKET_SIZE, 0);
+}
+
 void thread_draw(void *arg) {
 	(void)arg;
 	size_t size = SCREEN_WIDTH * SCREEN_HEIGHT * DEPTH;
-	uint8_t* img_full = malloc(size);
-	uint8_t* img_part = malloc(1);
-	int n = 0, m = 0, p = 0;
-	// n is img_full index, m is img_part index (unused), p is parted packet size
+	size_t compr_size = compressBound(size);
+	uint8_t* img_full = malloc(compr_size);
+	uint8_t* img_uncompr = malloc(size);
+	int n = 0, p = 0;
+	// n is img_full index, p is parted packet size
 	while(run_screen) {
 		uint8_t* pack = malloc(TCP_BUF_LEN);
 		int recd = read(sock, pack, TCP_BUF_LEN);
@@ -60,9 +73,7 @@ void thread_draw(void *arg) {
 				recd -= avail;
 				if(n == p) {
 					n = 0;
-					printf("copying screenshot\n");
-					u8* fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
-					memcpy(fb, img_full, p);
+					copy(img_uncompr, size, img_full, compr_size, p);
 				}
 			} else if(recd >= 3) {
 				uint32_t psize = ((uint32_t)pack[0] << 16) | ((uint32_t)pack[1] << 8) | pack[2];
@@ -71,6 +82,7 @@ void thread_draw(void *arg) {
 				if(psize == 0) n = 0;
 				else if(recd >= psize + 3) {
 					memcpy(img_full, pack + 3, psize);
+					copy(img_uncompr, size, img_full, compr_size, p);
 				} else {
 					memcpy(img_full, pack + 3, recd - 3);
 					p = psize;
@@ -83,7 +95,7 @@ void thread_draw(void *arg) {
 		free(pack_orig);
 	}
 	free(img_full);
-	free(img_part);
+	free(img_uncompr);
 }
 
 int main(int argc, char **argv)
